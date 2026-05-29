@@ -6,18 +6,9 @@ import Layout from '../layouts/BlogPost.astro';
 	title="About Me"
 	description="About Alexey Timin and Systems in Practice"
 	pubDate={new Date('May 29 2026')}
+	showDate={false}
 >
 	<div class="about-intro">
-		<img
-			class="avatar"
-			src="https://github.com/atimin.png?size=240"
-			alt="Alexey Timin"
-			width="160"
-			height="160"
-			loading="eager"
-			decoding="async"
-		/>
-
 		<p>
 			I'm Alexey Timin, a software engineer and the creator of <a href="https://www.reduct.store/"
 				>ReductStore</a
@@ -57,20 +48,12 @@ import Layout from '../layouts/BlogPost.astro';
 		margin-bottom: 2rem;
 	}
 
-	.avatar {
-		align-self: center;
-		width: 160px;
-		height: 160px;
-		border-radius: 50%;
-		box-shadow: var(--box-shadow);
-	}
-
 	.about-intro p {
 		margin: 0;
 	}
 
 	.privacy-note {
-		color: rgb(var(--gray));
+		color: var(--color-text-muted);
 		font-size: 0.9em;
 	}
 
