@@ -63,6 +63,11 @@ const url = new URL(Astro.url.pathname, site).toString();
 		background-size: 16px 16px !important;
 		top: 5px !important;
 		left: 6px !important;
+		filter: brightness(0) saturate(100%) invert(68%) sepia(31%) saturate(514%) hue-rotate(342deg) brightness(89%) contrast(88%);
+	}
+
+	.shareon > *:hover::before {
+		filter: brightness(0) saturate(100%) invert(8%) sepia(10%) saturate(737%) hue-rotate(169deg) brightness(90%) contrast(91%);
 	}
 
 	.shareon > *:hover {
