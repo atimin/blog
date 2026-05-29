@@ -5,6 +5,7 @@ import BaseHead from '../components/BaseHead.astro';
 import Footer from '../components/Footer.astro';
 import FormattedDate from '../components/FormattedDate.astro';
 import Header from '../components/Header.astro';
+import { getTagHref } from '../utils/tags';
 
 type Heading = {
 	depth: number;
@@ -16,7 +17,7 @@ type Props = CollectionEntry<'blog'>['data'] & {
 	headings?: Heading[];
 };
 
-const { title, description, pubDate, updatedDate, heroImage, headings = [] } = Astro.props;
+const { title, description, pubDate, updatedDate, heroImage, headings = [], tags = [] } = Astro.props;
 const sectionHeadings = headings.filter(({ depth }) => depth === 2 || depth === 3);
 ---
 
@@ -136,6 +137,32 @@ const sectionHeadings = headings.filter(({ depth }) => depth === 2 || depth === 
 				margin-bottom: 0.5em;
 				color: rgb(var(--gray));
 			}
+			.post-tags {
+				display: flex;
+				flex-wrap: wrap;
+				justify-content: center;
+				gap: 0.4rem;
+				margin: 0 0 0.75rem;
+			}
+			.post-tag {
+				display: inline-block;
+				padding: 0.2rem 0.65rem;
+				border: 1px solid rgb(var(--gray-light));
+				border-radius: 999px;
+				background: rgba(var(--gray-light), 0.45);
+				color: rgb(var(--gray));
+				font-size: 0.7rem;
+				font-weight: 700;
+				letter-spacing: 0.04em;
+				line-height: 1.5;
+				text-decoration: none;
+				text-transform: uppercase;
+			}
+			.post-tag:hover {
+				background: white;
+				color: var(--accent);
+				border-color: var(--accent);
+			}
 			.last-updated-on {
 				font-style: italic;
 			}
@@ -163,6 +190,17 @@ const sectionHeadings = headings.filter(({ depth }) => depth === 2 || depth === 
 								}
 							</div>
 							<h1>{title}</h1>
+							{
+								tags.length > 0 && (
+									<div class="post-tags" aria-label="Post tags">
+										{tags.map((tag) => (
+											<a class="post-tag" href={getTagHref(tag)}>
+												{tag}
+											</a>
+										))}
+									</div>
+								)
+							}
 							<hr />
 						</div>
 					</div>

@@ -1,6 +1,10 @@
 ---
 title: 'Persistent Edge Storage for a Legacy IIoT System'
 description: 'How we integrated ReductStore into an existing MQTT-based IoT pipeline to solve connectivity gaps and selective data replication—without changing the customer''s architecture.'
+tags:
+ - iot
+ - mqtt
+ - customer-story
 pubDate: '2026-05-29'
 ---
 
@@ -175,4 +179,3 @@ The most important part: none of this required changes to the customer's existin
 The MQTT → Hono → Pub/Sub → BigQuery pipeline remained untouched.
 The bridge simply slots in as a transparent layer between ReductStore and the existing MQTT ingestion point.
 For the cloud backend, nothing changed—it still receives MQTT messages in the same format as before.
-

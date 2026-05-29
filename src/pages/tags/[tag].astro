@@ -1,25 +1,64 @@
 ---
 import { Image } from 'astro:assets';
+import type { CollectionEntry } from 'astro:content';
 import { getCollection } from 'astro:content';
-import BaseHead from '../components/BaseHead.astro';
-import Footer from '../components/Footer.astro';
-import FormattedDate from '../components/FormattedDate.astro';
-import Header from '../components/Header.astro';
-import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
-import { getTagHref } from '../utils/tags';
+import BaseHead from '../../components/BaseHead.astro';
+import Footer from '../../components/Footer.astro';
+import FormattedDate from '../../components/FormattedDate.astro';
+import Header from '../../components/Header.astro';
+import { SITE_TITLE } from '../../consts';
+import { getTagHref, getTagSlug } from '../../utils/tags';
 
-const posts = (await getCollection('blog')).sort(
-	(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
-);
+type BlogPost = CollectionEntry<'blog'>;
+
+export async function getStaticPaths() {
+	const posts = (await getCollection('blog')).sort(
+		(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
+	);
+	const tags = new Map<string, string>();
+
+	for (const post of posts) {
+		for (const tag of post.data.tags) {
+			tags.set(getTagSlug(tag), tag);
+		}
+	}
+
+	return Array.from(tags, ([slug, tag]) => ({
+		params: { tag: slug },
+		props: {
+			tag,
+			posts: posts.filter((post) => post.data.tags.some((postTag) => getTagSlug(postTag) === slug)),
+		},
+	}));
+}
+
+type Props = {
+	tag: string;
+	posts: BlogPost[];
+};
+
+const { tag, posts } = Astro.props;
+const title = `Posts tagged ${tag}`;
 ---
 
 <!doctype html>
 <html lang="en">
 	<head>
-		<BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
+		<BaseHead title={`${title} | ${SITE_TITLE}`} description={`Blog posts tagged ${tag}`} />
 		<style>
 			main {
 				width: 960px;
+			}
+			.archive-title {
+				margin-bottom: 2rem;
+				text-align: center;
+			}
+			.archive-title h1 {
+				margin-bottom: 0.25rem;
+			}
+			.archive-title p {
+				margin: 0;
+				color: rgb(var(--gray));
 			}
 			ul {
 				display: flex;
@@ -81,13 +120,13 @@ const posts = (await getCollection('blog')).sort(
 				font-size: 0.8rem;
 				line-height: 1.5;
 			}
-			.card-tag:hover {
-				color: var(--accent);
-				border-color: var(--accent);
-			}
+			.card-tag:hover,
 			ul li a:hover h4,
 			ul li a:hover .date {
 				color: var(--accent);
+			}
+			.card-tag:hover {
+				border-color: var(--accent);
 			}
 			ul a:hover img {
 				box-shadow: var(--box-shadow);
@@ -115,6 +154,10 @@ const posts = (await getCollection('blog')).sort(
 	<body>
 		<Header />
 		<main>
+			<header class="archive-title">
+				<h1>{tag}</h1>
+				<p>{posts.length} {posts.length === 1 ? 'post' : 'posts'}</p>
+			</header>
 			<section>
 				<ul>
 					{
@@ -131,9 +174,9 @@ const posts = (await getCollection('blog')).sort(
 								</a>
 								{post.data.tags.length > 0 && (
 									<div class="card-tags" aria-label={`Tags for ${post.data.title}`}>
-										{post.data.tags.map((tag) => (
-											<a class="card-tag" href={getTagHref(tag)}>
-												{tag}
+										{post.data.tags.map((postTag) => (
+											<a class="card-tag" href={getTagHref(postTag)}>
+												{postTag}
 											</a>
 										))}
 									</div>
