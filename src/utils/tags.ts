@@ -8,5 +8,9 @@ export function getTagSlug(tag: string) {
 }
 
 export function getTagHref(tag: string) {
-	return `/tags/${getTagSlug(tag)}/`;
+	const base = import.meta.env.BASE_URL.endsWith('/')
+		? import.meta.env.BASE_URL
+		: `${import.meta.env.BASE_URL}/`;
+
+	return `${base}tags/${getTagSlug(tag)}/`;
 }

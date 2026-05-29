@@ -41,6 +41,11 @@ import Layout from '../layouts/BlogPost.astro';
 		You can find my code on <a href="https://github.com/atimin">GitHub</a> and connect with me on
 		<a href="https://www.linkedin.com/in/atimin/">LinkedIn</a>.
 	</p>
+
+	<p class="privacy-note">
+		PS: This site uses Cloudflare Web Analytics to collect anonymous traffic statistics. It does
+		not use cookies or track visitors across websites.
+	</p>
 </Layout>
 
 <style>
@@ -62,6 +67,11 @@ import Layout from '../layouts/BlogPost.astro';
 
 	.about-intro p {
 		margin: 0;
+	}
+
+	.privacy-note {
+		color: rgb(var(--gray));
+		font-size: 0.9em;
 	}
 
 	@media (max-width: 560px) {
