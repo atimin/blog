@@ -8,8 +8,7 @@ import { defineConfig, fontProviders } from 'astro/config';
 
 // https://astro.build/config
 export default defineConfig({
-	site: 'https://atimin.github.io',
-	base: '/blog',
+	site: 'https://blog.atimin.dev',
 	integrations: [mdx(), sitemap()],
 	markdown: {
 		processor: unified({
