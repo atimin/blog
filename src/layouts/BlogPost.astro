@@ -5,6 +5,7 @@ import BaseHead from '../components/BaseHead.astro';
 import Footer from '../components/Footer.astro';
 import FormattedDate from '../components/FormattedDate.astro';
 import Header from '../components/Header.astro';
+import ShareButtons from '../components/ShareButtons.astro';
 import { getTagHref } from '../utils/tags';
 
 type Heading = {
@@ -142,7 +143,7 @@ const sectionHeadings = headings.filter(({ depth }) => depth === 2 || depth === 
 				flex-wrap: wrap;
 				justify-content: center;
 				gap: 0.4rem;
-				margin: 0 0 0.75rem;
+				margin: 2rem 0 0;
 			}
 			.post-tag {
 				display: inline-block;
@@ -190,37 +191,40 @@ const sectionHeadings = headings.filter(({ depth }) => depth === 2 || depth === 
 								}
 							</div>
 							<h1>{title}</h1>
-							{
-								tags.length > 0 && (
-									<div class="post-tags" aria-label="Post tags">
-										{tags.map((tag) => (
-											<a class="post-tag" href={getTagHref(tag)}>
-												{tag}
-											</a>
-										))}
-									</div>
-								)
-							}
 							<hr />
 						</div>
 					</div>
 				</div>
 				{
 					sectionHeadings.length > 0 && (
-						<nav class="article-toc" aria-label="Article sections">
-							<h2>Sections</h2>
-							<ul>
-								{sectionHeadings.map((heading) => (
-									<li data-depth={heading.depth}>
-										<a href={`#${heading.slug}`}>{heading.text}</a>
-									</li>
-								))}
-							</ul>
-						</nav>
+						<aside class="article-toc">
+							<nav aria-label="Article sections">
+								<h2>Content</h2>
+								<ul>
+									{sectionHeadings.map((heading) => (
+										<li data-depth={heading.depth}>
+											<a href={`#${heading.slug}`}>{heading.text}</a>
+										</li>
+									))}
+								</ul>
+							</nav>
+							<ShareButtons title={title} description={description} />
+						</aside>
 					)
 				}
 				<div class="prose article-body">
 					<slot />
+					{
+						tags.length > 0 && (
+							<div class="post-tags" aria-label="Post tags">
+								{tags.map((tag) => (
+									<a class="post-tag" href={getTagHref(tag)}>
+										{tag}
+									</a>
+								))}
+							</div>
+						)
+					}
 				</div>
 			</article>
 		</main>

@@ -1,0 +1,71 @@
+---
+import 'shareon/css';
+
+type Props = {
+	title: string;
+	description?: string;
+};
+
+const { title, description = '' } = Astro.props;
+const site = Astro.site ?? Astro.url.origin;
+const url = new URL(Astro.url.pathname, site).toString();
+---
+
+<section class="post-share" aria-label="Share this post">
+	<hr class="share-separator" />
+	<div class="shareon" data-url={url} data-title={title} data-text={description}>
+		<a class="linkedin" aria-label="Share on LinkedIn"></a>
+		<a class="twitter" aria-label="Share on Twitter"></a>
+		<a class="facebook" aria-label="Share on Facebook"></a>
+		<a class="reddit" aria-label="Share on Reddit"></a>
+		<a class="email" aria-label="Share by email"></a>
+		<a class="copy-url" aria-label="Copy link"></a>
+	</div>
+</section>
+
+<script>
+	import * as Shareon from 'shareon';
+
+	Shareon.init();
+</script>
+
+<style>
+	.post-share {
+		margin: 0.75rem 0 1rem;
+		text-align: left;
+	}
+
+	.share-separator {
+		margin: 0 0 0.75rem;
+		border: 0;
+		border-top: 1px solid rgb(var(--gray-light));
+	}
+
+	.shareon {
+		justify-content: flex-start;
+	}
+
+	.shareon > * {
+		background-color: rgb(var(--gray-dark)) !important;
+		border: 1px solid rgb(var(--gray-light)) !important;
+		border-radius: 999px;
+		min-width: 14px !important;
+		height: 18px !important;
+		margin: 2px;
+		padding: 4px 7px !important;
+		opacity: 0.9;
+	}
+
+	.shareon > *::before {
+		width: 16px !important;
+		height: 16px !important;
+		background-size: 16px 16px !important;
+		top: 5px !important;
+		left: 6px !important;
+	}
+
+	.shareon > *:hover {
+		background-color: rgb(var(--black)) !important;
+		opacity: 1;
+	}
+</style>
