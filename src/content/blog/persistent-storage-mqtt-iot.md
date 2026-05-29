@@ -15,8 +15,6 @@ pubDate: '2026-05-29'
                                                                                                                                                               
  This is a real story about how we enabled long-term persistent storage with [ReductStore](https://www.reduct.store) for a customer with a legacy IIoT system. 
 
-Here's the updated full problem section:
-
 ## No persistent storage, no access to raw data
 
 The customer had a pretty typical IoT setup:
@@ -142,7 +140,7 @@ In other words, the MQTT bridge becomes the replication target—ReductStore thi
 
 The diagram shows the data flow: vibration data enters the Connector, which writes it into a ReductStore bucket. The replication task inside ReductStore pushes batches of records to the MQTT bridge's HTTP API, and the bridge forwards them to the cloud over MQTT.
 
-The replication task is configured on the edge ReductStore instance with a target URL pointing to the MQTT bridge's HTTP endpoint and a label filter that selects only records collected during stable production speed. This way, only relevant data gets replicated—everything else stays on disk locally but never reaches the cloud.
+The replication task is configured on the edge ReductStore instance with a target URL pointing to the MQTT bridge's HTTP endpoint and a label filter that selects only analytics data collected during stable production speed. This way, only relevant records get replicated to the cloud—raw vibration data and irrelevant measurements stay on disk locally.
 
 To imitate a target ReductStore instance, the service must implement the following HTTP endpoints:
 

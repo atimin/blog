@@ -8,7 +8,6 @@ import HeaderLink from './HeaderLink.astro';
 		<h2><a href="/">{SITE_TITLE}</a></h2>
 		<div class="internal-links">
 			<HeaderLink href="/">Home</HeaderLink>
-			<HeaderLink href="/blog">Blog</HeaderLink>
 			<HeaderLink href="/about">About</HeaderLink>
 		</div>
 		<div class="social-links">
@@ -50,9 +49,16 @@ import HeaderLink from './HeaderLink.astro';
 		text-decoration: none;
 	}
 	nav {
+		position: relative;
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
+	}
+	.internal-links {
+		position: absolute;
+		left: 50%;
+		display: flex;
+		transform: translateX(-50%);
 	}
 	nav a {
 		padding: 1em 0.5em;

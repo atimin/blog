@@ -39,14 +39,15 @@ import Layout from '../layouts/BlogPost.astro';
 
 <style>
 	.about-intro {
-		display: grid;
-		grid-template-columns: 160px 1fr;
+		display: flex;
+		flex-direction: column;
 		gap: 1.5rem;
-		align-items: center;
+		align-items: stretch;
 		margin-bottom: 2rem;
 	}
 
 	.avatar {
+		align-self: center;
 		width: 160px;
 		height: 160px;
 		border-radius: 50%;
@@ -59,8 +60,6 @@ import Layout from '../layouts/BlogPost.astro';
 
 	@media (max-width: 560px) {
 		.about-intro {
-			grid-template-columns: 1fr;
-			justify-items: center;
 			text-align: center;
 		}
 	}
