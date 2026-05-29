@@ -6,6 +6,7 @@ import Footer from '../components/Footer.astro';
 import FormattedDate from '../components/FormattedDate.astro';
 import Header from '../components/Header.astro';
 import ShareButtons from '../components/ShareButtons.astro';
+import DefaultHeroImage from '../assets/social-banner.webp';
 import { getTagHref } from '../utils/tags';
 
 type Heading = {
@@ -19,12 +20,13 @@ type Props = CollectionEntry<'blog'>['data'] & {
 };
 
 const { title, description, pubDate, updatedDate, heroImage, headings = [], tags = [] } = Astro.props;
+const displayHeroImage = heroImage ?? DefaultHeroImage;
 const sectionHeadings = headings.filter(({ depth }) => depth === 2 || depth === 3);
 ---
 
 <html lang="en">
 	<head>
-		<BaseHead title={title} description={description} />
+		<BaseHead title={title} description={description} image={displayHeroImage} />
 		<style>
 			main {
 				width: calc(100% - 2em);
@@ -176,7 +178,7 @@ const sectionHeadings = headings.filter(({ depth }) => depth === 2 || depth === 
 			<article class={sectionHeadings.length > 0 ? 'article-grid' : 'article-single'}>
 				<div class="article-content">
 					<div class="hero-image">
-						{heroImage && <Image width={1020} height={510} src={heroImage} alt="" />}
+						<Image width={1020} height={510} src={displayHeroImage} alt="" />
 					</div>
 					<div class="prose">
 						<div class="title">
