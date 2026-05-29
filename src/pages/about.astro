@@ -7,11 +7,23 @@ import Layout from '../layouts/BlogPost.astro';
 	description="About Alexey Timin and the Bytes & Decisions blog"
 	pubDate={new Date('May 29 2026')}
 >
-	<p>
-		I'm Alexey Timin, a software engineer and the creator of <a href="https://www.reduct.store/"
-			>ReductStore</a
-		>, a time-series object store built for edge AI, robotics, computer vision, and industrial data.
-	</p>
+	<div class="about-intro">
+		<img
+			class="avatar"
+			src="https://github.com/atimin.png?size=240"
+			alt="Alexey Timin"
+			width="160"
+			height="160"
+			loading="eager"
+			decoding="async"
+		/>
+
+		<p>
+			I'm Alexey Timin, a software engineer and the creator of <a href="https://www.reduct.store/"
+				>ReductStore</a
+			>, a time-series object store built for edge AI, robotics, computer vision, and industrial data.
+		</p>
+	</div>
 
 	<p>
 		Bytes & Decisions is my development journal about building ReductStore in the open. I write about
@@ -24,3 +36,32 @@ import Layout from '../layouts/BlogPost.astro';
 		<a href="https://www.linkedin.com/in/atimin/">LinkedIn</a>.
 	</p>
 </Layout>
+
+<style>
+	.about-intro {
+		display: grid;
+		grid-template-columns: 160px 1fr;
+		gap: 1.5rem;
+		align-items: center;
+		margin-bottom: 2rem;
+	}
+
+	.avatar {
+		width: 160px;
+		height: 160px;
+		border-radius: 50%;
+		box-shadow: var(--box-shadow);
+	}
+
+	.about-intro p {
+		margin: 0;
+	}
+
+	@media (max-width: 560px) {
+		.about-intro {
+			grid-template-columns: 1fr;
+			justify-items: center;
+			text-align: center;
+		}
+	}
+</style>

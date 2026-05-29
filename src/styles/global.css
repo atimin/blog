@@ -91,6 +91,32 @@ img {
 	height: auto;
 	border-radius: 8px;
 }
+.prose svg {
+	display: block;
+	max-width: 100%;
+	height: auto;
+	margin: 2rem auto;
+}
+.prose svg .backdrop {
+	fill: transparent;
+}
+.prose svg .solid {
+	stroke: rgb(var(--gray-dark));
+	stroke-width: 2;
+}
+.prose svg .nofill {
+	fill: none;
+	stroke: rgb(var(--gray-dark));
+	stroke-width: 2;
+}
+.prose svg .filled {
+	fill: rgb(var(--gray-dark));
+	stroke: rgb(var(--gray-dark));
+}
+.prose svg text {
+	fill: rgb(var(--gray-dark));
+	font-family: ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', monospace;
+}
 code {
 	padding: 2px 5px;
 	background-color: rgb(var(--gray-light));
