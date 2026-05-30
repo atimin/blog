@@ -125,6 +125,7 @@ code {
 }
 pre {
 	padding: 1.5em;
+	overflow-x: auto;
 	background: var(--color-surface);
 	border: 1px solid var(--color-border);
 	border-radius: 8px;
@@ -157,6 +158,26 @@ hr {
 	}
 	main {
 		padding: 1em;
+	}
+	h1 {
+		font-size: 2em;
+	}
+	h2 {
+		font-size: 1.75em;
+	}
+	h3 {
+		font-size: 1.5em;
+	}
+	h4 {
+		font-size: 1.25em;
+	}
+	pre {
+		padding: 1em;
+		-webkit-overflow-scrolling: touch;
+	}
+	blockquote {
+		padding-left: 12px;
+		font-size: 1.1em;
 	}
 }
 

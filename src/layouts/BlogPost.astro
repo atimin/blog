@@ -120,8 +120,8 @@ const sectionHeadings = headings.filter(({ depth }) => depth === 2 || depth === 
 					width: 720px;
 					max-width: 100%;
 					max-height: none;
-					margin: 0 auto 1rem;
-					padding: 1em;
+					margin: 0 auto 0.75rem;
+					padding: 0.75em 1em;
 					border-bottom: 1px solid var(--color-border);
 				}
 			}
@@ -136,6 +136,14 @@ const sectionHeadings = headings.filter(({ depth }) => depth === 2 || depth === 
 			}
 			.title hr {
 				margin: 0.5em 0;
+			}
+			@media (max-width: 720px) {
+				.title {
+					padding: 0.5em 0 0.25em;
+				}
+				.title h1 {
+					margin-bottom: 0.35em;
+				}
 			}
 			.date {
 				margin-bottom: 0.5em;

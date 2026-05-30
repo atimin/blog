@@ -80,6 +80,20 @@ const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL :
 		justify-self: end;
 	}
 	@media (max-width: 720px) {
+		nav {
+			grid-template-columns: 1fr;
+			grid-template-rows: auto auto;
+			justify-items: center;
+		}
+		nav h2 {
+			justify-self: center;
+		}
+		.internal-links {
+			justify-self: center;
+		}
+		.internal-links a {
+			padding: 1em 0.75em;
+		}
 		.social-links {
 			display: none;
 		}

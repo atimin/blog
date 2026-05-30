@@ -75,4 +75,17 @@ const url = new URL(Astro.url.pathname, site).toString();
 		border-color: var(--color-heading) !important;
 		opacity: 1;
 	}
+
+	@media (max-width: 720px) {
+		.shareon > * {
+			min-width: 22px !important;
+			height: 24px !important;
+			padding: 8px 10px !important;
+		}
+
+		.shareon > *::before {
+			top: 9px !important;
+			left: 9px !important;
+		}
+	}
 </style>
