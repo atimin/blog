@@ -1,5 +1,6 @@
 import { getCollection } from 'astro:content';
 import rss from '@astrojs/rss';
+import { marked } from 'marked';
 import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
 
 export async function GET(context) {
@@ -12,6 +13,7 @@ export async function GET(context) {
 		items: posts.map((post) => ({
 			...post.data,
 			link: `${base}${post.id}/`,
+			content: marked(post.body),
 		})),
 	});
 }
