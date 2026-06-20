@@ -6,6 +6,7 @@ tags:
  - mqtt
  - customer-story
 pubDate: '2026-05-29'
+slug: 'persistent-storage-mqtt-iot'
 ---
 
  In real-life projects, nothing is perfect. But usually we don't touch systems that already work.

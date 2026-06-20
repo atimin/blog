@@ -7,7 +7,7 @@ import { unified } from 'unified';
 import { getSvgbobDiagrams } from '../../utils/rss-diagrams.js';
 
 export async function getStaticPaths() {
-	const posts = await getCollection('blog');
+	const posts = (await getCollection('blog')).filter((post) => !post.data.draft);
 
 	return posts.flatMap((post) =>
 		getSvgbobDiagrams(post.body).map((diagram, index) => ({

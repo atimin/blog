@@ -3,8 +3,10 @@
 import mdx from '@astrojs/mdx';
 import { unified } from '@astrojs/markdown-remark';
 import sitemap from '@astrojs/sitemap';
+import remarkDirective from 'remark-directive';
 import svgbob from 'remark-svgbob';
 import { defineConfig, fontProviders } from 'astro/config';
+import { remarkAdmonitions } from './src/utils/remark-admonitions.js';
 
 // https://astro.build/config
 export default defineConfig({
@@ -12,7 +14,7 @@ export default defineConfig({
 	integrations: [mdx(), sitemap()],
 	markdown: {
 		processor: unified({
-			remarkPlugins: [svgbob],
+			remarkPlugins: [remarkDirective, remarkAdmonitions, svgbob],
 		}),
 	},
 	fonts: [
