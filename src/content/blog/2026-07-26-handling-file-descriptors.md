@@ -1,6 +1,6 @@
 ---
-title: "Durable Handling of File Descriptors"
-description: 'Why naive open/close semantics break durability and remote storage, and what that means for a database engine.'
+title: "Managing File Descriptors for Durability and Performance"
+description: 'How descriptor caching and periodic synchronization balance durability, write performance, and remote-storage costs in a database engine.'
 draft: false
 tags:
     - system-design
@@ -9,8 +9,7 @@ pubDate: '2026-07-26'
 slug: 'handling-file-descriptors'
 ---
 
-In the [previous article](/efficient-data-logger-design) we described the block-based layout behind [ReductStore's storage engine](https://www.reduct.store): append-only blocks, descriptors, and a WAL for crash recovery. In this article, we move to a lower level and examine how ReductStore manages file descriptors to balance durability and performance.
-
+In the [previous article](/efficient-data-logger-design) we described the block-based layout behind [ReductStore's storage engine](https://www.reduct.store): append-only blocks, descriptors, and a WAL for crash recovery. In this article, we move to a lower level and examine how ReductStore manages file descriptors to balance durability, write performance, and remote-storage costs.
 
 ## The cost of durability
 
@@ -28,73 +27,76 @@ The standard fix is to call `fsync` (or `fdatasync`) before closing:
 open → write → fsync → close
 ```
 
-`fsync` forces the kernel to write any modified file data still cached in memory to the storage device and wait for the write to complete. After `fsync` returns, the data is durable — it will survive a power loss.
+`fsync` asks the kernel to write modified file data and the required metadata to the storage device, then waits for the operation to complete. Subject to the guarantees of the filesystem and storage device, a successful `fsync` makes the file contents durable across a power loss.
 
-The problem is cost. `fsync` is one of the most expensive system calls you can make. It stalls the calling thread until the storage device confirms the write, which can take anywhere from tens of microseconds on a fast NVMe drive to tens of milliseconds on a spinning disk or network-attached volume. Percona published [a thorough benchmark](https://www.percona.com/blog/fsync-performance-storage-devices/) showing just how dramatic the differences are across devices.
+The problem is cost. `fsync` can be an expensive system call because it stalls the calling thread until the storage device confirms the write. This can take from tens of microseconds on a fast NVMe drive to tens of milliseconds on a spinning disk or network-attached volume. Percona published [a detailed benchmark](https://www.percona.com/blog/fsync-performance-storage-devices/) that shows how much the results vary across devices.
 
-For a storage engine that writes many small records per second, calling `fsync` after every write would destroy throughput. But skipping it means data loss on crash. This tension — durability versus write throughput — is one of the two problems that shape how we manage file descriptors in ReductStore.
+For a storage engine that writes many small records per second, calling `fsync` after every write would significantly reduce throughput. But skipping it risks data loss after a host failure. This tension between durability and write throughput is one of the two problems that shape how we manage file descriptors in ReductStore.
 
-## Close means upload on FUSE-mounted storage
+## When close means upload
 
-The second problem is less common but equally painful if you hit it. ReductStore can run on top of S3-compatible object storage mounted as a local filesystem via a FUSE driver (for example, `s3fs`, `goofys`, or `mountpoint-s3`).
+The second problem appears when ReductStore runs on S3-compatible object storage mounted as a local filesystem through a FUSE driver, such as `s3fs`, `goofys`, or `mountpoint-s3`.
 
-FUSE drivers emulate POSIX file semantics on top of an object store. They let you `open`, `write`, and `read` as if you were working with a local file. The important difference is how they handle `close()`: when you close a file descriptor that was opened for writing, the FUSE driver uploads the entire file to the remote object store. This is the only moment it can guarantee the object is consistent — partial writes to an S3 object are not possible, so the driver must send the complete file as a single PUT.
+FUSE drivers emulate filesystem operations on top of an object store. They let applications use familiar operations such as `open`, `write`, and `read`, but their behavior is not identical to that of a local filesystem. Many object-storage FUSE drivers finalize or upload a modified object when its write handle is flushed or closed. The exact behavior depends on the driver: it may upload the complete file, use a multipart upload, or maintain a local cache before sending data to remote storage.
 
-For a storage engine, this creates a serious problem. If we follow the naive lifecycle — open a block file, write records into it, close it when full — every close triggers a full upload of the block. That might be acceptable for large sealed blocks. But if we also close the file between writes (for example, to limit the number of open file descriptors), every close sends the partially-filled block to S3, potentially megabytes of data, only to download and re-upload it on the next write.
+For a storage engine, this can create a serious problem. Closing a sealed block may reasonably finalize one remote object. Closing an active block between writes, however, may repeatedly upload its current contents. Reopening it later may also require another download before the next update. The amount of extra work depends on the driver's caching and upload strategy.
 
-The cost scales with block size and write frequency. For a 64 MB block that receives a few hundred records per second, closing and reopening the file after each write would mean uploading 64 MB hundreds of times — clearly unacceptable.
+The cost scales with block size and write frequency. With a driver that uploads complete modified files, repeatedly closing a preallocated 64 MB block could transfer that block many times before it is sealed. This is too expensive for a write-heavy workload.
 
 This means file descriptor lifetime directly affects both network cost and write latency when running on FUSE-mounted storage. We cannot treat `close()` as a cheap cleanup operation.
 
-Both problems point in the same direction: for a storage engine, `close()` is not free. It carries durability semantics on local filesystems and upload semantics on remote ones. The way we open, hold, and eventually close file descriptors must account for both — without leaking descriptors or starving the system of resources.
+These two problems are related but distinct. On a local filesystem, `close()` does not guarantee durability; the engine must synchronize data explicitly. On some FUSE-mounted object stores, closing or flushing a modified file may trigger expensive remote work. Descriptor lifetime and synchronization policy must therefore be managed together, without leaking descriptors or exhausting system resources.
 
-## Caching File Descriptors
+## Caching file descriptors
 
-The first issue to address is descriptor lifetime. Instead of closing a block file after each operation, we want to keep its descriptor open and reuse it across reads and writes.
-However, keeping every block file open indefinitely is not practical:
+The first issue to address is descriptor lifetime. Instead of closing a block file after each operation, we keep its descriptor open and reuse it across reads and writes. However, keeping every block file open indefinitely is not practical:
 
 1. The operating system limits the number of open file descriptors per process. On many Linux systems the default is 1024. The limit is tunable, but it is never infinite, and a storage engine managing thousands of blocks can easily exceed it.
 2. Some filesystem operations require the file descriptor to be closed first. You cannot delete or rename an open file on every platform.
-3. Descriptors must be accessible from different parts of the program — writers, readers, compaction — so they need a shared data structure regardless.
+3. Writers, readers, and compaction tasks all need access to descriptors, so the program needs a shared data structure for them.
 
 Since we already need a shared structure, we can make it a cache with two eviction rules:
 
 - **Capacity limit:** when the number of open descriptors exceeds a configured maximum, evict the least-recently-used entry.
-- **Idle timeout:** evict any descriptor that has not been accessed within a configurable period.
+- **Idle timeout:** mark a descriptor for eviction when it has not been accessed within a configurable period.
 
-Every access refreshes the entry's timestamp, so actively-used files stay open while idle ones are closed automatically. When the cache evicts an entry, it returns it to the caller — the caller is responsible for closing the file descriptor and handling any side effects (the fsync or the FUSE upload).
+Every access refreshes the entry's timestamp, so actively used files remain in the cache. Expired entries are considered when the cache processes a new insertion. Before eviction, the file-cache layer tries to obtain exclusive access to the descriptor. It returns a descriptor to the cache if another task is using it; otherwise, it attempts to synchronize dirty data before allowing the handle to close.
 
 You can see the full implementation in [`reductstore/src/core/cache.rs`](https://github.com/reductstore/reductstore/blob/main/reductstore/src/core/cache.rs).
 
-This design addresses the FUSE problem directly: as long as a block is receiving writes, its descriptor stays in the cache and `close()` is never called. No redundant uploads happen. Idle blocks eventually get evicted and uploaded once, which is acceptable because they are no longer being written to.
+This design reduces the FUSE problem directly: while a block is receiving regular writes, its descriptor remains cached and is not repeatedly closed. An idle block can still be evicted, reopened, and evicted again later, so caching reduces redundant uploads rather than eliminating them completely.
 
-However, the cache alone does not solve durability. It controls *when* we close, but it says nothing about *when* we sync. We still need a mechanism that calls `fsync` at the right moments without stalling every write. That is the subject of the next section.
+The cache controls *when* descriptors close, but it does not decide *when* data becomes durable. That requires a separate synchronization policy.
 
+## Asynchronous filesystem synchronization
 
-## Async Filesystem Synchronization
+Calling `fsync` after every write would make ReductStore's append-heavy workload wait on every record. Instead, the engine uses three synchronization paths:
 
-The descriptor cache from the previous section determines *when* we close files, but it says nothing about *when* we sync them. Calling `fsync` on every write is not an option — ReductStore's append-heavy workload would stall on every record. Instead, synchronization is split into two paths:
+- **Block finalization:** when a block reaches capacity, the engine truncates its data file, saves the final descriptor and index metadata, and schedules the related files for synchronization. This work continues in the background, so finalizing a block is not a strict synchronous durability boundary.
+- **Periodic synchronization:** a background worker checks the cache every 100 ms. It selects up to 16 eligible dirty files, starting with those that have waited longest, and synchronizes files that are not currently in use.
+- **Explicit synchronization:** operations such as a graceful shutdown first save cached metadata and then force all writable files in the cache through the synchronization path. This is the path to use when the caller must wait for storage work to finish.
 
-- **Sealing** — when a block reaches capacity, the engine truncates it to its final size, runs compaction, calls `fsync`, and only then removes the WAL entries. This is a synchronous durability boundary.
-- **Periodic sync** — for blocks still receiving writes, a background task calls `fsync` on every dirty descriptor at a fixed interval (100 ms by default).
-
-The rest of this section focuses on the second path — the async periodic sync — because it is the one that requires additional machinery.
+The rest of this section focuses on periodic synchronization because it requires dirty-state tracking, batching, and coordination with active readers and writers.
 
 ### Trade-off
 
-Between two sync cycles, data lives only in the kernel page cache. A crash during that window can lose up to 100 ms of writes. In practice this is acceptable: outages caused by power loss or OOM kills are rare, and the resulting data gap (sub-second) is negligible compared to the minutes or hours the system is typically offline.
+Writes made since the last successful synchronization may exist only in the kernel page cache. A power loss or hardware failure can therefore lose the most recent writes, typically around 100 ms of data with the default worker schedule. This is an approximate window rather than a strict limit because a busy descriptor, slow storage, or a failed synchronization can extend it.
+
+For continuous data logging systems, this is often a practical trade-off. A power cycle or hardware outage can leave the system unavailable for several minutes or even hours. Compared with an interruption of that length, a gap of roughly 100 ms is small, while avoiding an `fsync` after every record substantially improves write throughput.
 
 ### Tracking dirty descriptors
 
-To know which descriptors need syncing, we wrap each real file descriptor in a proxy struct. The proxy implements the standard filesystem traits (`Read`, `Write`, `Seek`) so callers interact with it as if it were a normal file, but internally it records the open mode and the timestamp of the last write. The sync task uses this timestamp to decide whether a descriptor is dirty.
+To know which files need synchronization, ReductStore wraps each file handle in a small type that implements the standard `Read`, `Write`, and `Seek` traits. The wrapper stores the access mode, a dirty flag, and the time of the last successful synchronization. A write or resize operation marks the file dirty; a successful synchronization marks it clean and updates the timestamp.
+
+The scheduled worker uses non-blocking lock attempts, so it skips a descriptor that is already in use instead of waiting for it. After the worker obtains the descriptor's write lock, however, a new reader or writer must wait until the local `fsync` and any backend upload complete. Moving synchronization to a worker avoids an `fsync` on every record, but it does not make the underlying storage operation non-blocking.
 
 ### The file cache
 
-The proxy, the LRU cache from the previous section, and the sync worker come together in a single structure — the file cache:
+The wrapper, the LRU cache from the previous section, and the synchronization worker come together in a single structure: the file cache.
 
 ```svgbob
                            +--------------------+
-                           | File Cache         |     +-----------+
+                           | File cache         |     +-----------+
 "Rest of application" <--->+ * exclusive access +-----+ Sync task |
                            | * synchronization  |     +-----------+
                            +---------+----------+
@@ -106,14 +108,14 @@ The proxy, the LRU cache from the previous section, and the sync worker come tog
                                +-----+------+
                                      ^
                                      |
-                          +----------+----------+
-+------------------+      | "File-Proxy"        |
-|  File Descriptor +----->+ * hold descriptor   |
-+------------------+      | * track dirty state |
-                          +---------------------+
+                          +----------+-----------+
++------------------+      | File wrapper         |
+| File descriptor  +----->+ * holds descriptor   |
++------------------+      | * tracks dirty state |
+                          +----------------------+
 ```
 
-The file cache provides an API for the rest of the application to open and write files. Internally it manages locking (so two tasks cannot write to the same descriptor concurrently) and delegates eviction and sync to their respective subsystems.
+The file cache provides an API for the rest of the application to open and write files. Internally, it allows only one task at a time to seek, read, or write through a shared descriptor, while the cache and worker handle eviction and synchronization.
 
 In ReductStore's code, a write looks like this:
 
@@ -130,7 +132,7 @@ let mut lock = FILE_CACHE
 lock.write_all(chunk.as_ref())?;
 ```
 
-Every call specifies the seek offset explicitly. Because the descriptor is shared across readers, writers, and compaction, no caller can assume it is positioned at the end of the file.
+Every call specifies the seek offset explicitly. Because readers, writers, and compaction tasks share the descriptor, no caller can assume that it is positioned at the end of the file.
 
 You can find the full implementation in [`reductstore/src/core/file_cache.rs`](https://github.com/reductstore/reductstore/blob/main/reductstore/src/core/file_cache.rs).
 
@@ -140,4 +142,5 @@ This design uses a process-global singleton (`FILE_CACHE`). In hindsight, this w
 
 ## Conclusion
 
-File descriptors are more than disposable handles in a storage engine. Closing one can trigger an expensive remote upload, while syncing one can stall the write path. Treating descriptor lifetime and durability as separate concerns lets ReductStore control both costs: an LRU cache keeps active files open without exhausting system limits, periodic synchronization bounds data loss for active blocks, and sealing provides a synchronous durability boundary.
+File descriptors are more than disposable handles in a storage engine. Closing one may trigger expensive remote work, while synchronizing one can delay access to the file. Treating descriptor lifetime and durability as separate concerns lets ReductStore control both costs: an LRU cache keeps active files open within a fixed limit, and a background worker synchronizes dirty files without adding an `fsync` to every record write.
+
