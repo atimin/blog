@@ -1,6 +1,6 @@
 ---
 import { Image } from 'astro:assets';
-import type { CollectionEntry } from 'astro:content';
+import { type CollectionEntry, getCollection } from 'astro:content';
 import BaseHead from '../components/BaseHead.astro';
 import Footer from '../components/Footer.astro';
 import FormattedDate from '../components/FormattedDate.astro';
@@ -16,13 +16,30 @@ type Heading = {
 };
 
 type Props = CollectionEntry<'blog'>['data'] & {
+	currentPostId?: string;
 	headings?: Heading[];
 	showDate?: boolean;
 };
 
-const { title, description, pubDate, updatedDate, heroImage, headings = [], tags = [], showDate = true } = Astro.props;
+const {
+	title,
+	description,
+	pubDate,
+	updatedDate,
+	heroImage,
+	currentPostId,
+	headings = [],
+	tags = [],
+	showDate = true,
+} = Astro.props;
 const shareImage = heroImage ?? DefaultShareImage;
 const sectionHeadings = headings.filter(({ depth }) => depth === 2 || depth === 3);
+const latestPosts = (await getCollection('blog'))
+	.filter((post) => !post.data.draft && post.id !== currentPostId)
+	.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
+	.slice(0, 5);
+const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
+const hasSidebars = sectionHeadings.length > 0 || latestPosts.length > 0;
 ---
 
 <html lang="en">
@@ -58,10 +75,61 @@ const sectionHeadings = headings.filter(({ depth }) => depth === 2 || depth === 
 				grid-column: 2;
 				grid-row: 2;
 			}
+			.article-body :global(h2) {
+				font-size: 1.75rem;
+			}
+			.article-body :global(h3) {
+				font-size: 1.35rem;
+			}
+			.article-body :global(h4) {
+				font-size: 1.1rem;
+			}
 			.article-single {
 				width: 720px;
 				max-width: calc(100% - 2em);
 				margin: auto;
+			}
+			.article-latest {
+				grid-column: 1;
+				grid-row: 2;
+				position: sticky;
+				top: 1.5rem;
+				max-height: calc(100vh - 3rem);
+				overflow-y: auto;
+				padding: 1em 0;
+				font-size: 0.85em;
+				line-height: 1.4;
+			}
+			.article-latest h2,
+			.article-toc h2 {
+				margin: 0 0 0.75rem;
+				font-size: 0.85rem;
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
+				color: var(--color-text-muted);
+			}
+			.article-latest ul {
+				list-style: none;
+				margin: 0;
+				padding: 0;
+			}
+			.article-latest li {
+				margin: 0.45rem 0;
+			}
+			.article-latest a {
+				display: block;
+				color: var(--color-text-muted);
+				text-decoration: none;
+			}
+			.article-latest a:hover {
+				color: var(--color-accent);
+			}
+			.latest-date {
+				display: block;
+				margin-top: 0.3rem;
+				color: var(--color-text-muted);
+				font-size: 0.75rem;
+				font-weight: 400;
 			}
 			.article-toc {
 				grid-column: 3;
@@ -73,13 +141,6 @@ const sectionHeadings = headings.filter(({ depth }) => depth === 2 || depth === 
 				padding: 1em 0;
 				font-size: 0.85em;
 				line-height: 1.4;
-			}
-			.article-toc h2 {
-				margin: 0 0 0.75rem;
-				font-size: 0.85rem;
-				letter-spacing: 0.08em;
-				text-transform: uppercase;
-				color: var(--color-text-muted);
 			}
 			.article-toc ul {
 				list-style: none;
@@ -124,6 +185,15 @@ const sectionHeadings = headings.filter(({ depth }) => depth === 2 || depth === 
 					padding: 0.75em 1em;
 					border-bottom: 1px solid var(--color-border);
 				}
+				.article-latest {
+					position: static;
+					width: 720px;
+					max-width: 100%;
+					max-height: none;
+					margin: 0 auto 0.75rem;
+					padding: 0.75em 1em;
+					border-bottom: 1px solid var(--color-border);
+				}
 			}
 			.title {
 				margin-bottom: 0;
@@ -133,6 +203,8 @@ const sectionHeadings = headings.filter(({ depth }) => depth === 2 || depth === 
 			}
 			.title h1 {
 				margin: 0 0 0.5em 0;
+				font-size: clamp(2rem, 4vw, 2.5rem);
+				line-height: 1.1;
 			}
 			.title hr {
 				margin: 0.5em 0;
@@ -143,6 +215,9 @@ const sectionHeadings = headings.filter(({ depth }) => depth === 2 || depth === 
 				}
 				.title h1 {
 					margin-bottom: 0.35em;
+				}
+				.article-latest {
+					display: none;
 				}
 			}
 			.date {
@@ -184,11 +259,12 @@ const sectionHeadings = headings.filter(({ depth }) => depth === 2 || depth === 
 	<body>
 		<Header />
 		<main>
-			<article class={sectionHeadings.length > 0 ? 'article-grid' : 'article-single'}>
+			<article class={hasSidebars ? 'article-grid' : 'article-single'}>
 				<div class="article-content">
 					{heroImage && <div class="hero-image"><Image width={1020} height={510} src={heroImage} alt="" /></div>}
 					<div class="prose">
 						<div class="title">
+							<h1>{title}</h1>
 							{
 								showDate && (
 									<div class="date">
@@ -203,7 +279,6 @@ const sectionHeadings = headings.filter(({ depth }) => depth === 2 || depth === 
 									</div>
 								)
 							}
-							<h1>{title}</h1>
 							<hr />
 						</div>
 					</div>
@@ -239,6 +314,27 @@ const sectionHeadings = headings.filter(({ depth }) => depth === 2 || depth === 
 						)
 					}
 				</div>
+				{
+					latestPosts.length > 0 && (
+						<aside class="article-latest">
+							<nav aria-label="Latest articles">
+								<h2>Latest articles</h2>
+								<ul>
+									{latestPosts.map((post) => (
+										<li>
+											<a href={`${base}${post.id}/`}>
+												<span>{post.data.title}</span>
+												<span class="latest-date">
+													<FormattedDate date={post.data.pubDate} />
+												</span>
+											</a>
+										</li>
+									))}
+								</ul>
+							</nav>
+						</aside>
+					)
+				}
 			</article>
 		</main>
 		<Footer />

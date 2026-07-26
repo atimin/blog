@@ -143,4 +143,3 @@ This design uses a process-global singleton (`FILE_CACHE`). In hindsight, this w
 ## Conclusion
 
 File descriptors are more than disposable handles in a storage engine. Closing one may trigger expensive remote work, while synchronizing one can delay access to the file. Treating descriptor lifetime and durability as separate concerns lets ReductStore control both costs: an LRU cache keeps active files open within a fixed limit, and a background worker synchronizes dirty files without adding an `fsync` to every record write.
-
