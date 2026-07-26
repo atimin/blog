@@ -217,3 +217,5 @@ The final design keeps the good properties of append-only storage while adding t
 * Clear visibility rules: a record is readable only after it has a valid descriptor entry.
 
 This is the core idea behind the [ReductStore](https://www.reduct.store/) data logger: keep the data layout simple, make metadata explicit, and use append-only recovery mechanisms to avoid turning durability into a bottleneck.
+
+For the lower-level details of how ReductStore balances durability and performance when opening, syncing, and closing these files, see [Durable Handling of File Descriptors](/handling-file-descriptors).
